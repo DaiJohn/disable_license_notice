@@ -37,9 +37,6 @@ response = requests.get(url, headers=headers)
 license_url = "https://graph.microsoft.com/v1.0/subscribedSkus"
 license_response = requests.get(license_url, headers=headers)
 license = license_response.json().get("value", [])
-#all_sku_name = ""
-#all_sku_ids = [entry['skuId'] for entry in license]
-#print(all_sku_ids.count("6fd2c87f-b296-42f0-b197-1e91e994b900"))
 
 if response.status_code != 200:
     print(f"❌ Query failed: {response.status_code}")
