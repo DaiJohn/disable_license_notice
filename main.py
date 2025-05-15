@@ -57,8 +57,6 @@ for user in users:
     display_name = user.get("displayName", "N/A")
     user_id = user.get("id")
 
-    #print(f"🧑‍💼 {display_name} ({upn})")
-
     # Check license status
     license_url = f"https://graph.microsoft.com/v1.0/users/{user_id}/licenseDetails"
     license_response = requests.get(license_url, headers=headers)
@@ -68,8 +66,8 @@ for user in users:
         if license_data:
             #print(sku_info)
             license_text = "\n".join(f"- {license}" for license in sku_info)
-            #adaptive_card_single = teams.Adaptive_Card_Single(upn, user_id, license_text)
-            #data = requests.post(teams.Teams_Post(),json = adaptive_card_single)
+            adaptive_card_single = teams.Adaptive_Card_Single(upn, user_id, license_text)
+            data = requests.post(teams.Teams_Post(),json = adaptive_card_single)
             index = index + 1
             user_container = {
                                 "type": "Container",
