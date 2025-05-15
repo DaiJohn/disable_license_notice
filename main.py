@@ -2,12 +2,12 @@ import requests
 from msal import ConfidentialClientApplication
 import teams_webhook as teams
 
-# 設定變數：請填上你自己的資料
+# put your azure app info, please create Azure app first
 client_id = "app client id"
 client_secret = 'client secrect'
 tenant_id = 'tenant id'
 
-# MSAL 設定
+# MSAL setting
 authority = f"https://login.microsoftonline.com/{tenant_id}"
 scope = ["https://graph.microsoft.com/.default"]
 
@@ -21,16 +21,16 @@ token_response = app.acquire_token_for_client(scopes=scope)
 access_token = token_response.get("access_token")
 
 if not access_token:
-    print("❌ 無法取得 access token")
+    print("❌ Can't get access token")
     exit()
 
-# 設定 headers
+# Setting headers
 headers = {
     "Authorization": f"Bearer {access_token}",
     "Content-Type": "application/json"
 }
 
-# 呼叫 Microsoft Graph API - 查詢已停用帳戶
+# Call Microsoft Graph API - search disable account
 url = "https://graph.microsoft.com/v1.0/users?$filter=accountEnabled eq false"
 response = requests.get(url, headers=headers)
 
@@ -42,24 +42,16 @@ license = license_response.json().get("value", [])
 #print(all_sku_ids.count("6fd2c87f-b296-42f0-b197-1e91e994b900"))
 
 if response.status_code != 200:
-    print(f"❌ 查詢失敗: {response.status_code}")
+    print(f"❌ Query failed: {response.status_code}")
     print(response.text)
     exit()
 
 users = response.json().get("value", [])
 
-#print(f"🔎 找到 {len(users)} 個停用帳號：\n")
-user_disable = [{
-      "type": "TextBlock",
-      "text": "This Week Account Disabled",
-      "wrap": True,
-      "weight": "Bolder",
-      "size": "Large",
-      "color": "Accent"
-    }]
+user_disable = []
 
 index = 0
-# 檢查每個使用者是否有 license
+# Cheeck each account have license
 for user in users:
     upn = user.get("userPrincipalName", "N/A")
     display_name = user.get("displayName", "N/A")
@@ -67,7 +59,7 @@ for user in users:
 
     #print(f"🧑‍💼 {display_name} ({upn})")
 
-    # 查詢 license 狀態
+    # Check license status
     license_url = f"https://graph.microsoft.com/v1.0/users/{user_id}/licenseDetails"
     license_response = requests.get(license_url, headers=headers)
     if license_response.status_code == 200:
@@ -81,11 +73,11 @@ for user in users:
             index = index + 1
             user_container = {
                                 "type": "Container",
-                                "separator": index > 0,  # 從第2筆開始加分隔線
+                                "separator": index > 0,  
                                 "items": [
                                 {
                                     "type": "TextBlock",
-                                    "text": "⚠️ 使用者帳號停用通知",
+                                    "text": "⚠️ Account Disable Notification",
                                     "wrap": True,
                                     "weight": "Bolder",
                                     "size": "Medium",                                       
@@ -94,13 +86,13 @@ for user in users:
                                 {
                                     "type": "FactSet",
                                     "facts": [
-                                                {"title": "帳號:", "value": upn},
-                                                {"title": "狀態:", "value": "🔒 Disabled"}
+                                                {"title": "Account:", "value": upn},
+                                                {"title": "Status:", "value": "🔒 Disabled"}
                                     ]
                                 },                                    
                                 {
                                     "type": "TextBlock",
-                                    "text": "📌 **仍授予的授權**",
+                                    "text": "📌 **Granted authorization**",
                                     "wrap": True,
                                     "weight": "Bolder",
                                     "spacing": "Small"
