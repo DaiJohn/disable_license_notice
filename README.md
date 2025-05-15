@@ -1,5 +1,5 @@
 # disable_license_notice
-When account disable check who have license not remove yet
+When account disable check who have license not remove yet  
 And will use Teams webhook to push  
 
 ## Screenshots
