@@ -50,14 +50,6 @@ def fetch_license(user):
                 "type": "Container",
                 "separator": True,
                 "items": [
-                    #{
-                    #    "type": "TextBlock",
-                    #    "text": "⚠️ Account Disable Notification",
-                    #    "wrap": True,
-                    #    "weight": "Bolder",
-                    #    "size": "Medium",                                       
-                    #    "color": "Attention"
-                    #},
                     {
                         "type": "FactSet",
                         "facts": [
