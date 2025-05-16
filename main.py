@@ -1,11 +1,15 @@
 import requests
 from msal import ConfidentialClientApplication
 import teams_webhook as teams
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 # put your azure app info, please create Azure app first
-client_id = "app client id"
-client_secret = 'client secrect'
-tenant_id = 'tenant id'
+tenant_id = os.getenv('tenant_id')
+client_id = os.getenv('client_id')
+client_secret = os.getenv('client_secret')
 
 # MSAL setting
 authority = f"https://login.microsoftonline.com/{tenant_id}"
