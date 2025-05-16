@@ -1,3 +1,4 @@
+import concurrent.futures
 import requests
 from msal import ConfidentialClientApplication
 import teams_webhook as teams
@@ -6,7 +7,6 @@ import os
 
 load_dotenv()
 
-# put your azure app info, please create Azure app first
 tenant_id = os.getenv('tenant_id')
 client_id = os.getenv('client_id')
 client_secret = os.getenv('client_secret')
@@ -34,77 +34,76 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# Call Microsoft Graph API - search disable account
-url = "https://graph.microsoft.com/v1.0/users?$filter=accountEnabled eq false"
-response = requests.get(url, headers=headers)
-
-license_url = "https://graph.microsoft.com/v1.0/subscribedSkus"
-license_response = requests.get(license_url, headers=headers)
-license = license_response.json().get("value", [])
-
-if response.status_code != 200:
-    print(f"❌ Query failed: {response.status_code}")
-    print(response.text)
-    exit()
-
-users = response.json().get("value", [])
-
-user_disable = []
-
-index = 0
-# Cheeck each account have license
-for user in users:
+def fetch_license(user):
+    user_id = user.get("id")
     upn = user.get("userPrincipalName", "N/A")
     display_name = user.get("displayName", "N/A")
-    user_id = user.get("id")
 
-    # Check license status
     license_url = f"https://graph.microsoft.com/v1.0/users/{user_id}/licenseDetails"
     license_response = requests.get(license_url, headers=headers)
+
     if license_response.status_code == 200:
         license_data = license_response.json().get("value", [])
         sku_info = [entry['skuPartNumber'] for entry in license_data]
-        if license_data:
-            #print(sku_info)
-            license_text = "\n".join(f"- {license}" for license in sku_info)
-            adaptive_card_single = teams.Adaptive_Card_Single(upn, user_id, license_text)
-            data = requests.post(teams.Teams_Post(),json = adaptive_card_single)
-            index = index + 1
-            user_container = {
-                                "type": "Container",
-                                "separator": index > 0,  
-                                "items": [
-                                {
-                                    "type": "TextBlock",
-                                    "text": "⚠️ Account Disable Notification",
-                                    "wrap": True,
-                                    "weight": "Bolder",
-                                    "size": "Medium",                                       
-                                    "color": "Attention"
-                                },
-                                {
-                                    "type": "FactSet",
-                                    "facts": [
-                                                {"title": "Account:", "value": upn},
-                                                {"title": "Status:", "value": "🔒 Disabled"}
-                                    ]
-                                },                                    
-                                {
-                                    "type": "TextBlock",
-                                    "text": "📌 **Granted authorization**",
-                                    "wrap": True,
-                                    "weight": "Bolder",
-                                    "spacing": "Small"
-                                },
-                                {
-                                    "type": "FactSet",
-                                    "facts": [
-                                    {"title": "•", "value": license} for license in sku_info]
-                                }
-                                ]
-                            } 
-            user_disable.append(user_container)
+        if any(license in teams.target_sku_part() for license in sku_info):
+            return {
+                "type": "Container",
+                "separator": True,
+                "items": [
+                    #{
+                    #    "type": "TextBlock",
+                    #    "text": "⚠️ Account Disable Notification",
+                    #    "wrap": True,
+                    #    "weight": "Bolder",
+                    #    "size": "Medium",                                       
+                    #    "color": "Attention"
+                    #},
+                    {
+                        "type": "FactSet",
+                        "facts": [
+                            {"title": "Account:", "value": f"{display_name} ({upn})"},
+                            {"title": "Status:", "value": "🔒 Disabled"}
+                        ]
+                    },
+                    {
+                        "type": "TextBlock",
+                        "text": "📌 **Granted authorization**",
+                        "wrap": True,
+                        "weight": "Bolder",
+                        "spacing": "Small"
+                    },
+                    {
+                        "type": "FactSet",
+                        "facts": [
+                            {
+                                "title": "•",
+                                "value": teams.LICENSE_NAME_MAP().get(license, license)
+                            }
+                            for license in sku_info
+                            if license in teams.target_sku_part()
+                        ]
+                    }
+                ]
+            }
+    return None
 
-#adaptive_card_json = json.dumps(user_disable, ensure_ascii=False, indent=2)
-data = requests.post(teams.Teams_Post(), json= teams.adaptive_card(user_disable))
+url = "https://graph.microsoft.com/v1.0/users?$filter=accountEnabled eq false"
+#response = requests.get(url, headers=headers)
+while url:
+    response = requests.get(url, headers=headers)
+    data = response.json()
+
+    all_users.extend(data.get("value", []))
+
+    # Check have more info
+    url = data.get("@odata.nextLink", None)
+
+# Retrieve license information for all accounts in parallel
+with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+    results = list(executor.map(fetch_license, all_users))
+
+# Filter None result
+user_disable = [r for r in results if r]
+print(user_disable, len(user_disable))
+data = requests.post(teams.Teams_Post(), json= teams.adaptive_card(user_disable, len(user_disable)))
 print(data.status_code)
