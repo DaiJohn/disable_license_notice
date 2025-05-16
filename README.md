@@ -35,6 +35,13 @@ $ sudo pacman -S python
 ```console
 $ pip install -r requirements.txt
 ```
+## Create .env file to save credential
+```console
+client_id = "your client id"
+client_secret = "your secret"
+tenant_id = "your Azure tenant id"
+```
+
 ## Usage
 ```console
 $ py main.py
