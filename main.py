@@ -78,6 +78,8 @@ def fetch_license(user):
                 ]
             }
     return None
+    
+all_users = []
 
 url = "https://graph.microsoft.com/v1.0/users?$filter=accountEnabled eq false"
 #response = requests.get(url, headers=headers)
@@ -90,7 +92,6 @@ while url:
     # Check have more info
     url = data.get("@odata.nextLink", None)
 
-all_users = []
 # Retrieve license information for all accounts in parallel
 with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
     results = list(executor.map(fetch_license, all_users))
