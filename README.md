@@ -32,18 +32,18 @@ $ sudo pacman -S python
 ```console
 $ pip install -r requirements.txt
 ```
-## Create .env file to save credential
+### Create .env file to save credential
 ```console
 client_id = "your client id"
 client_secret = "your secret"
 tenant_id = "your Azure tenant id"
 ```
-## Change Webhook Url from teams_webhook.py
+### Change Webhook Url from teams_webhook.py
 ```console
 def Teams_Post():
     return "Webhook_URL"
 ```
-## Usage
+### Usage
 ```console
 $ py main.py
 ```
