@@ -38,7 +38,11 @@ client_id = "your client id"
 client_secret = "your secret"
 tenant_id = "your Azure tenant id"
 ```
-
+## Change Webhook Url from teams_webhook.py
+```console
+def Teams_Post():
+    return "Webhook_URL"
+```
 ## Usage
 ```console
 $ py main.py
