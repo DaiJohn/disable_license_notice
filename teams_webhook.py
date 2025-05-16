@@ -1,8 +1,8 @@
 def Teams_Post():
-    return "Webhook_url"
+    return "Webhook_URL"
 
 #multiple adaptive card  
-def adaptive_card (body: dict):
+def adaptive_card (body: dict, user_count: int):
     return {
                 "type":"message",
                 "attachments":[
@@ -13,14 +13,18 @@ def adaptive_card (body: dict):
                     "$schema":"http://adaptivecards.io/schemas/adaptive-card.json",
                     "type":"AdaptiveCard",
                     "version":"1.2",
-                    "body": body,
-                    "actions": [
+                    "body": [
                         {
-                            "type": "Action.OpenUrl",
-                            "title": "View Account Status",
-                            "url": "https://admin.microsoft.com/#/users"
-                        }
-                    ]
+                            "type": "TextBlock",
+                            "text": "🚨 Account Disable Notification Total: " + str(user_count),
+                            "wrap": True,
+                            "weight": "Bolder",
+                            "size": "Large",
+                            "color": "Attention",
+                            "separator": True
+                        },
+                        *body  # expend user_disable list card block
+                    ],
                     }
                 }
                 ]
@@ -86,3 +90,16 @@ def Adaptive_Card_Single(upn: str, user_id: str, license: str ):
             }
         ]
     }
+
+def target_sku_part():
+    return [
+        "STANDARDPACK","ENTERPRISEPACK", "SPE_E3", "SPE_E5"
+    ]
+
+def LICENSE_NAME_MAP():
+    return {
+    "STANDARDPACK": "Office 365 E1",
+    "ENTERPRISEPACK": "Office 365 E3",
+    "SPE_E3": "Microsoft 365 E3",
+    "SPE_E5": "Microsoft 365 E3",
+}
