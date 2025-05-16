@@ -98,6 +98,4 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
 
 # Filter None result
 user_disable = [r for r in results if r]
-print(user_disable, len(user_disable))
 data = requests.post(teams.Teams_Post(), json= teams.adaptive_card(user_disable, len(user_disable)))
-print(data.status_code)
