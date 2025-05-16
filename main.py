@@ -90,6 +90,7 @@ while url:
     # Check have more info
     url = data.get("@odata.nextLink", None)
 
+all_users = []
 # Retrieve license information for all accounts in parallel
 with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
     results = list(executor.map(fetch_license, all_users))
