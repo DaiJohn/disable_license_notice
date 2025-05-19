@@ -1,6 +1,3 @@
-def Teams_Post():
-    return "Webhook_URL"
-
 def Adaptive_Card_Mulit_Region (body: dict, user_count: int, region: str, time: str):
     return {
                 "type":"message",
