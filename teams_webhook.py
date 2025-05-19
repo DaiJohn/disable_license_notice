@@ -1,6 +1,3 @@
-def Teams_Post():
-    return "Webhook_URL"
-
 #multiple adaptive card  
 def adaptive_card (body: dict, user_count: int):
     return {
