@@ -1,9 +1,11 @@
+from dotenv import load_dotenv
+from collections import defaultdict
+from msal import ConfidentialClientApplication
 import concurrent.futures
 import requests
-from msal import ConfidentialClientApplication
-import teams_webhook as teams
-from dotenv import load_dotenv
 import os
+import teams_webhook as teams
+from datetime import datetime
 
 load_dotenv()
 
@@ -38,6 +40,10 @@ def fetch_license(user):
     user_id = user.get("id")
     upn = user.get("userPrincipalName", "N/A")
     display_name = user.get("displayName", "N/A")
+    office_location = user.get("officeLocation", "N/A")
+    account_location = user.get("onPremisesSyncEnabled", "N/A")
+
+    cards_by_city = defaultdict(list)
 
     license_url = f"https://graph.microsoft.com/v1.0/users/{user_id}/licenseDetails"
     license_response = requests.get(license_url, headers=headers)
@@ -54,6 +60,8 @@ def fetch_license(user):
                         "type": "FactSet",
                         "facts": [
                             {"title": "Account:", "value": f"{display_name} ({upn})"},
+                            {"title": "Region:", "value": f"{office_location}"},
+                            {"title": "On-Prem", "value": f"{account_location}"},
                             {"title": "Status:", "value": "🔒 Disabled"}
                         ]
                     },
@@ -78,24 +86,45 @@ def fetch_license(user):
                 ]
             }
     return None
+
+
+def main():
+    all_users = []
+    cards_by_city = defaultdict(list)
+    url = "https://graph.microsoft.com/v1.0/users?$filter=accountEnabled eq false&$select=displayName,userPrincipalName,accountEnabled,onPremisesSyncEnabled,officeLocation,id"
+
+    while url:
+        response = requests.get(url, headers=headers)
+        data = response.json()
+
+        all_users.extend(data.get("value", []))
+        
+        # Check have more info
+        url = data.get("@odata.nextLink", None)
+
+    # Retrieve license information for all accounts in parallel
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        results = list(executor.map(fetch_license, all_users))
+        
+        # Filter None result
+    user_disable = [r for r in results if r]
+
+    for card in user_disable:
+        region = "Unknown"
+        for item in card.get("items", []):
+            if item.get("type") == "FactSet":
+                for fact in item.get("facts", []):
+                    if fact.get("title") == "Region:":
+                        region = fact.get("value", "Unknown").strip()
+                        break
+        cards_by_city[region].append(card)
+
+    today = datetime.today().strftime('%Y-%m-%d')
     
-all_users = []
+    for city, cards in cards_by_city.items():
+        adaptive_card_payload = teams.Adaptive_Card_Mulit_Region(cards, len(cards), city, today)
+        response = requests.post(teams.Teams_Post(), json=adaptive_card_payload)
+        print(f"📤 Sent card for region {city}, status: {response.status_code}")
 
-url = "https://graph.microsoft.com/v1.0/users?$filter=accountEnabled eq false"
-#response = requests.get(url, headers=headers)
-while url:
-    response = requests.get(url, headers=headers)
-    data = response.json()
-
-    all_users.extend(data.get("value", []))
-
-    # Check have more info
-    url = data.get("@odata.nextLink", None)
-
-# Retrieve license information for all accounts in parallel
-with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-    results = list(executor.map(fetch_license, all_users))
-
-# Filter None result
-user_disable = [r for r in results if r]
-data = requests.post(teams.Teams_Post(), json= teams.adaptive_card(user_disable, len(user_disable)))
+if __name__ == "__main__":
+    main()
