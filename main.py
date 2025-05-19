@@ -123,7 +123,7 @@ def main():
     
     for city, cards in cards_by_city.items():
         adaptive_card_payload = teams.Adaptive_Card_Mulit_Region(cards, len(cards), city, today)
-        response = requests.post(teams.Teams_Post(), json=adaptive_card_payload)
+        response = requests.post(os.getenv('webhook_url'), json=adaptive_card_payload)
         print(f"📤 Sent card for region {city}, status: {response.status_code}")
 
 if __name__ == "__main__":
