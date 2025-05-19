@@ -41,6 +41,7 @@ def fetch_license(user):
     upn = user.get("userPrincipalName", "N/A")
     display_name = user.get("displayName", "N/A")
     office_location = user.get("officeLocation", "N/A")
+    account_location = user.get("onPremisesSyncEnabled", "N/A")
 
     cards_by_city = defaultdict(list)
 
@@ -60,6 +61,7 @@ def fetch_license(user):
                         "facts": [
                             {"title": "Account:", "value": f"{display_name} ({upn})"},
                             {"title": "Region:", "value": f"{office_location}"},
+                            {"title": "On-Prem", "value": f"{account_location}"},
                             {"title": "Status:", "value": "🔒 Disabled"}
                         ]
                     },
@@ -85,41 +87,44 @@ def fetch_license(user):
             }
     return None
 
-all_users = []
-cards_by_city = defaultdict(list)
 
-url = "https://graph.microsoft.com/v1.0/users?$filter=accountEnabled eq false"
-#response = requests.get(url, headers=headers)
-while url:
-    response = requests.get(url, headers=headers)
-    data = response.json()
+def main():
+    all_users = []
+    cards_by_city = defaultdict(list)
+    url = "https://graph.microsoft.com/v1.0/users?$filter=accountEnabled eq false&$select=displayName,userPrincipalName,accountEnabled,onPremisesSyncEnabled,officeLocation,id"
 
-    all_users.extend(data.get("value", []))
+    while url:
+        response = requests.get(url, headers=headers)
+        data = response.json()
 
-    # Check have more info
-    url = data.get("@odata.nextLink", None)
+        all_users.extend(data.get("value", []))
+        
+        # Check have more info
+        url = data.get("@odata.nextLink", None)
 
+    # Retrieve license information for all accounts in parallel
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        results = list(executor.map(fetch_license, all_users))
+        
+        # Filter None result
+    user_disable = [r for r in results if r]
 
-# Retrieve license information for all accounts in parallel
-with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-    results = list(executor.map(fetch_license, all_users))
+    for card in user_disable:
+        region = "Unknown"
+        for item in card.get("items", []):
+            if item.get("type") == "FactSet":
+                for fact in item.get("facts", []):
+                    if fact.get("title") == "Region:":
+                        region = fact.get("value", "Unknown").strip()
+                        break
+        cards_by_city[region].append(card)
 
-# Filter None result
-user_disable = [r for r in results if r]
+    today = datetime.today().strftime('%Y-%m-%d')
+    
+    for city, cards in cards_by_city.items():
+        adaptive_card_payload = teams.Adaptive_Card_Mulit_Region(cards, len(cards), city, today)
+        response = requests.post(teams.Teams_Post(), json=adaptive_card_payload)
+        print(f"📤 Sent card for region {city}, status: {response.status_code}")
 
-for card in user_disable:
-    region = "Unknown"
-    for item in card.get("items", []):
-        if item.get("type") == "FactSet":
-            for fact in item.get("facts", []):
-                if fact.get("title") == "Region:":
-                    region = fact.get("value", "Unknown").strip()
-                    break
-    cards_by_city[region].append(card)
-
-today = datetime.today().strftime('%Y-%m-%d')
-
-for city, cards in cards_by_city.items():
-    adaptive_card_payload = teams.Adaptive_Card_Mulit_Region(cards, len(cards), city, today)
-    response = requests.post(teams.Teams_Post(), json=adaptive_card_payload)
-    print(f"📤 Sent card for region {city}, status: {response.status_code}")
+if __name__ == "__main__":
+    main()
